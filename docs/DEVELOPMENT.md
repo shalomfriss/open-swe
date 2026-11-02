@@ -1,6 +1,7 @@
 # Local Development
 
 Run Open SWE on your machine: the backend and the dashboard on `http://localhost:2024`, with GitHub and Slack webhooks arriving through a tunnel.
+For a first-time walkthrough with provider screenshots and copyable `.env` templates, see the [complete local setup guide](LOCAL_SETUP_GUIDE.md).
 Deploying it for a team is the [installation guide](INSTALLATION.md).
 
 ## Prerequisites
@@ -107,10 +108,13 @@ POSTGRES_URI=""                 # local dev defaults to localhost:5433; set this
 
 MDA_RUNTIME_URL="http://localhost:2025"   # `make dev-mda`; the backend refuses to start without it
 REMOTE_RUNTIME_TOKEN_SECRET=""  # openssl rand -hex 32     (signs the run tokens Managed Deep Agents calls back with)
+RUN_COMPLETE_WEBHOOK_SECRET=""   # openssl rand -hex 32     (authenticates MDA's completion callback)
+COMPLETION_WEBHOOK_URL="https://<name>.ngrok-free.dev/webhooks/run-complete"  # your tunnel from step 3
 ```
 
 Every Open SWE thread runs its model loop on Managed Deep Agents, from the project in `mda/`.
-Locally that is `make dev-mda` on port 2025, which reads its own `mda/.env`: set `OPEN_SWE_BACKEND_URL=http://localhost:2024` there, plus `LANGSMITH_API_KEY` and the same model key as above ([mda/README.md](../mda/README.md#run-locally)).
+Locally that is `make dev-mda` on port 2025, which reads its own `mda/.env`: set `OPEN_SWE_BACKEND_URL=http://localhost:2024`, `MDA_DEPLOYMENT_NAME=open-swe-<you>-local`, `LANGSMITH_API_KEY`, and the same model key as above ([mda/README.md](../mda/README.md#run-locally)). Give the deployment a stable, unique name for your machine; an explicit name also avoids a blocking-call error in MDA's local browser middleware.
+MDA needs the public completion webhook above to tell the backend when a run finishes or fails. Its dev server refuses loopback webhook URLs, so keep the restricted ngrok tunnel running for dashboard and Desktop tasks too. Without a completion callback, a failed run can leave its transcript turn showing **Working** indefinitely.
 
 `LANGGRAPH_URL` defaults to `http://localhost:2024`, and `DASHBOARD_BASE_URL` / `DASHBOARD_API_BASE_URL` default to it, so none of the three is needed locally.
 Keep them on localhost when setting `SLACK_PUBLIC_BASE_URL` to the tunnel.
@@ -167,6 +171,7 @@ The HMR WebSocket connects straight to Vite's port; the UI's Vite config points 
 | `POST /webhooks/github` | GitHub issue, PR, and comment webhooks |
 | `POST /github/channel/events` | The MDA deployment's GitHub channel asking what an issue mention starts |
 | `POST /webhooks/slack`, `POST /webhooks/slack/interactivity` | Slack events and Block Kit interactions |
+| `POST /webhooks/run-complete` | MDA run completion and failure callbacks |
 | `POST /webhooks/slack/commands` | The `/oswe` slash command |
 | `POST /linear/channel/events` | The MDA deployment's Linear channel asking what a Linear event starts |
 | `GET /dashboard/api/auth/login`, `GET /dashboard/api/auth/callback` | GitHub login |
